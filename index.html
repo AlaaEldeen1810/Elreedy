@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تقارير الحضور الشهرية</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#F7F6F2;--surface:#FFFFFF;--border:#E2DFD8;--text:#1A1917;--muted:#6B6860;--blue:#1D4ED8;--blue-light:#EFF6FF;--green:#15803D;--green-light:#F0FDF4;--orange:#B45309;--orange-light:#FFFBEB;--red:#B91C1C;--red-light:#FEF2F2;--radius:10px;--radius-sm:6px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans Arabic',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app{max-width:860px;margin:0 auto;padding:2rem 1.25rem}
+header{margin-bottom:2rem}
+header h1{font-size:22px;font-weight:600;letter-spacing:-.3px}
+header p{font-size:14px;color:var(--muted);margin-top:4px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.25rem}
+.card-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem}
+.drop-zone{border:1.5px dashed var(--border);border-radius:var(--radius);padding:3rem 1.5rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg)}
+.drop-zone:hover,.drop-zone.over{border-color:var(--blue);background:var(--blue-light)}
+.drop-zone svg{width:40px;height:40px;color:var(--muted);margin-bottom:.75rem}
+.drop-zone .label{font-size:15px;font-weight:500}
+.drop-zone .label span{color:var(--blue)}
+.drop-zone .hint{font-size:13px;color:var(--muted);margin-top:6px}
+.file-chip{display:flex;align-items:center;gap:10px;margin-top:1rem;padding:.6rem .9rem;background:var(--green-light);border:1px solid #BBF7D0;border-radius:var(--radius-sm);font-size:13px}
+.file-chip svg{color:var(--green);flex-shrink:0}
+.file-chip .fname{font-weight:500}
+.file-chip .fsize{color:var(--muted);margin-right:auto}
+.progress-wrap{margin-top:1rem;display:none}
+.progress-track{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--blue);border-radius:2px;width:0;transition:width .3s}
+.progress-label{font-size:12px;color:var(--muted);margin-top:6px}
+.actions{display:flex;gap:10px;margin-top:1.25rem;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;transition:all .15s}
+.btn:hover{background:var(--bg)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn-primary:hover{background:#1E40AF;border-color:#1E40AF}
+.btn svg{width:16px;height:16px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
+.stat-box{background:var(--bg);border-radius:var(--radius-sm);padding:.875rem 1rem}
+.stat-box .sl{font-size:12px;color:var(--muted);margin-bottom:4px}
+.stat-box .sv{font-size:22px;font-weight:600}
+.period{display:inline-flex;align-items:center;gap:6px;background:var(--blue-light);color:var(--blue);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;margin-bottom:1rem}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:var(--bg);padding:9px 12px;font-weight:600;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px}
+thead th:first-child{text-align:right}
+tbody td{padding:8px 12px;text-align:center;border-bottom:1px solid var(--border)}
+tbody td:first-child{text-align:right;font-weight:500}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--bg)}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500}
+.b-ok{background:var(--green-light);color:var(--green)}
+.b-warn{background:var(--orange-light);color:var(--orange)}
+.b-danger{background:var(--red-light);color:var(--red)}
+.hidden{display:none!important}
+@media(max-width:600px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>تقارير الحضور الشهرية</h1>
+    <p>ارفع ملف الحضور والانصراف — التقرير يتولد تلقائياً</p>
+  </header>
+
+  <div class="card">
+    <div class="card-title">ملف الحضور</div>
+    <div class="drop-zone" id="dropZone">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+      <div class="label">اسحب الملف هنا أو <span id="browseLink">اختره من جهازك</span></div>
+      <div class="hint">XLS / XLSX — ملف حضور وانصراف</div>
+    </div>
+    <input type="file" id="fileInput" accept=".xls,.xlsx" style="display:none">
+    <div class="file-chip hidden" id="fileChip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>
+      <span class="fname" id="chipName"></span>
+      <span class="fsize" id="chipSize"></span>
+    </div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel"></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="processBtn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        توليد التقرير
+      </button>
+      <button class="btn hidden" id="downloadBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        تحميل Excel
+      </button>
+      <button class="btn hidden" id="resetBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+        ملف جديد
+      </button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="resultsCard">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1.25rem">
+      <div>
+        <div class="card-title" style="margin-bottom:6px">نتائج التقرير</div>
+        <div class="period">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="periodText"></span>
+        </div>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="sl">أيام العمل</div><div class="sv" id="sWorkdays">—</div></div>
+      <div class="stat-box"><div class="sl">الموظفون</div><div class="sv" id="sEmps">—</div></div>
+      <div class="stat-box"><div class="sl">إجمالي غياب</div><div class="sv" id="sAbsent" style="color:var(--red)">—</div></div>
+      <div class="stat-box"><div class="sl">إجمالي تأخير (د)</div><div class="sv" id="sLate" style="color:var(--orange)">—</div></div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>الموظف</th><th>حضور</th><th>غياب</th><th>أيام تأخير</th><th>دقائق تأخير</th><th>حالة</th></tr></thead>
+        <tbody id="empTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// Format date as YYYY-MM-DD using LOCAL time (not UTC) to avoid timezone issues
+function localDateStr(dt){
+  return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+}
+let rawFile=null, excelBlob=null;
+
+$('browseLink').onclick = e=>{ e.stopPropagation(); $('fileInput').click(); };
+$('dropZone').onclick   = ()=>$('fileInput').click();
+$('fileInput').onchange = e=>handleFile(e.target.files[0]);
+$('dropZone').addEventListener('dragover',  e=>{ e.preventDefault(); $('dropZone').classList.add('over'); });
+$('dropZone').addEventListener('dragleave', ()=>$('dropZone').classList.remove('over'));
+$('dropZone').addEventListener('drop', e=>{ e.preventDefault(); $('dropZone').classList.remove('over'); handleFile(e.dataTransfer.files[0]); });
+
+function handleFile(f){
+  if(!f) return;
+  rawFile=f;
+  $('chipName').textContent=f.name;
+  $('chipSize').textContent='('+Math.round(f.size/1024)+' KB)';
+  $('fileChip').classList.remove('hidden');
+  $('processBtn').disabled=false;
+}
+
+function setProgress(pct,label){
+  $('progressWrap').style.display='block';
+  $('progressFill').style.width=pct+'%';
+  $('progressLabel').textContent=label;
+}
+
+// Parse datetime string using RAW HOUR to determine check-in vs check-out
+// Hours 7,8,9 in the raw string = morning = Check-In
+// Hours 3,4,5 in the raw string = afternoon stored as 12hr = Check-Out (add 12 to get real hour)
+// This approach is encoding-independent and works regardless of trailing chars
+function parseRecord(val){
+  const s = String(val).trim();
+  const m = s.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
+  if(!m) return null;
+  
+  const rawHour = parseInt(m[4], 10);
+  let type, realHour;
+  
+  if(rawHour >= 7){
+    type = 'in';           // morning: 07:xx, 08:xx, 09:xx = Check-In
+    realHour = rawHour;
+  } else if(rawHour <= 5){
+    type = 'out';          // afternoon stored as 12hr: 03:xx, 04:xx, 05:xx = Check-Out
+    realHour = rawHour + 12; // convert to 15, 16, 17
+  } else {
+    return null; // hour 6 = ambiguous, skip
+  }
+  
+  const dt = new Date(+m[3], +m[2]-1, +m[1], realHour, +m[5], +m[6]);
+  return { dt, type };
+}
+
+$('processBtn').onclick = async ()=>{
+  if(!rawFile) return;
+  $('processBtn').disabled=true;
+  setProgress(10,'قراءة الملف...');
+
+  const buf    = await rawFile.arrayBuffer();
+  setProgress(30,'تحليل البيانات...');
+
+  const wb_raw = XLSX.read(buf, {type:'array', raw:true, codepage:1256});
+  const rows   = XLSX.utils.sheet_to_json(wb_raw.Sheets[wb_raw.SheetNames[0]], {header:1, defval:'', raw:true});
+
+  setProgress(50,'حساب الحضور...');
+
+  const allDts=[], empMap={};
+
+  for(let i=1; i<rows.length; i++){
+    const r    = rows[i];
+    const name = String(r[1]||'').trim();
+    const dtRaw= String(r[3]||'').trim();
+    if(!name || name==='5' || !dtRaw) continue;
+
+    const parsed = parseRecord(dtRaw);
+    if(!parsed) continue;
+
+    const {dt, type} = parsed;
+    const ds = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+
+    allDts.push(dt);
+    if(!empMap[name]) empMap[name]={};
+    if(!empMap[name][ds]) empMap[name][ds]={ins:[],outs:[]};
+    empMap[name][ds][type==='in'?'ins':'outs'].push(dt);
+  }
+
+  if(!allDts.length){ alert('لم يتم التعرف على بيانات في الملف'); $('processBtn').disabled=false; return; }
+
+  allDts.sort((a,b)=>a-b);
+  const pStart=allDts[0], pEnd=allDts[allDts.length-1];
+
+  const workDays=[];
+  let cur=new Date(pStart); cur.setHours(0,0,0,0);
+  const endD=new Date(pEnd); endD.setHours(23,59,59,0);
+  while(cur<=endD){
+    if(cur.getDay()!==5) workDays.push(localDateStr(cur));
+    cur=new Date(cur.getTime()+86400000);
+  }
+
+  setProgress(70,'حساب التأخير والغياب...');
+
+  const employees=Object.keys(empMap);
+  const empResults={};
+
+  for(const emp of employees){
+    const dayMap=empMap[emp];
+    let totalLate=0, lateDays=0, presentDays=0;
+    const absentDays=[], detail=[];
+
+    for(const d of workDays){
+      if(!dayMap[d]||!dayMap[d].ins.length){ absentDays.push(d); continue; }
+      presentDays++;
+      const firstIn = dayMap[d].ins.sort((a,b)=>a-b)[0];
+      const lastOut = dayMap[d].outs.length ? dayMap[d].outs.sort((a,b)=>a-b)[dayMap[d].outs.length-1] : null;
+      const nine = new Date(firstIn); nine.setHours(9,0,0,0);
+      const diffSec = (firstIn-nine)/1000;
+      const lm = diffSec>0 ? Math.floor(diffSec/60) : 0;
+      totalLate+=lm; if(lm>0) lateDays++;
+      detail.push({date:d, checkin:firstIn.toTimeString().slice(0,5), checkout:lastOut?lastOut.toTimeString().slice(0,5):'—', lateMins:lm});
+    }
+    empResults[emp]={totalLate,lateDays,absentDays,presentDays,detail};
+  }
+
+  setProgress(90,'توليد ملف Excel...');
+  excelBlob=buildExcel(empResults,workDays,pStart,pEnd);
+  setProgress(100,'');
+
+  const fmt=d=>d.toLocaleDateString('ar-EG',{day:'2-digit',month:'long',year:'numeric'});
+  $('periodText').textContent=fmt(pStart)+' — '+fmt(pEnd);
+  $('sWorkdays').textContent=workDays.length;
+  $('sEmps').textContent=employees.length;
+  $('sAbsent').textContent=employees.reduce((s,e)=>s+empResults[e].absentDays.length,0);
+  $('sLate').textContent=employees.reduce((s,e)=>s+empResults[e].totalLate,0);
+
+  const tbody=$('empTbody');
+  tbody.innerHTML='';
+  for(const emp of employees){
+    const r=empResults[emp];
+    const badge=r.totalLate>200?'<span class="badge b-danger">تأخير كثير</span>'
+               :r.totalLate>60 ?'<span class="badge b-warn">تأخير متوسط</span>'
+               :                 '<span class="badge b-ok">منتظم</span>';
+    tbody.innerHTML+=`<tr>
+      <td>${emp}</td>
+      <td>${r.presentDays}</td>
+      <td style="color:${r.absentDays.length>0?'var(--red)':'inherit'};font-weight:${r.absentDays.length>0?600:400}">${r.absentDays.length}</td>
+      <td>${r.lateDays}</td>
+      <td style="font-weight:600">${r.totalLate}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }
+
+  $('resultsCard').classList.remove('hidden');
+  $('downloadBtn').classList.remove('hidden');
+  $('resetBtn').classList.remove('hidden');
+  setTimeout(()=>{ $('progressWrap').style.display='none'; },600);
+};
+
+$('downloadBtn').onclick=()=>{
+  const url=URL.createObjectURL(excelBlob);
+  const a=document.createElement('a'); a.href=url; a.download='Attendance_Report.xlsx'; a.click();
+  URL.revokeObjectURL(url);
+};
+
+$('resetBtn').onclick=()=>{
+  rawFile=null; excelBlob=null; $('fileInput').value='';
+  $('fileChip').classList.add('hidden');
+  $('resultsCard').classList.add('hidden');
+  $('downloadBtn').classList.add('hidden');
+  $('resetBtn').classList.add('hidden');
+  $('processBtn').disabled=true;
+  $('progressWrap').style.display='none';
+};
+
+function buildExcel(empResults,workDays,pStart,pEnd){
+  const WB=XLSX.utils.book_new();
+  const employees=Object.keys(empResults);
+  const DNS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+  const dn=d=>DNS[new Date(d).getDay()];
+
+  const d1=[['الموظف','التاريخ','اليوم','وقت الحضور','دقائق التأخير','تراكمي','ملاحظة']];
+  for(const emp of employees){
+    let cum=0;
+    for(const rec of empResults[emp].detail){
+      cum+=rec.lateMins;
+      d1.push([emp,rec.date,dn(rec.date),rec.checkin,
+        rec.lateMins>0?rec.lateMins:'—',cum,
+        rec.lateMins===0?'في الوقت':rec.lateMins<10?'تأخير بسيط':'تأخير']);
+    }
+    d1.push([emp+' — الإجمالي','','','',empResults[emp].totalLate,empResults[emp].lateDays+' يوم','']);
+  }
+  XLSX.utils.book_append_sheet(WB,XLSX.utils.aoa_to_sheet(d1),'دقائق التأخير');
+
+  const allDays=[];
+  let cur=new Date(pStart); cur.setHours(0,0,0,0);
+  const endD=new Date(pEnd); endD.setHours(23,59,59,0);
+  while(cur<=endD){allDays.push(localDateStr(cur));cur=new Date(cur.getTime()+86400000);}
+  const pSets={};
+  for(const emp of employees) pSets[emp]=new Set(empResults[emp].detail.map(r=>r.date));
+  const d2=[['التاريخ','اليوم',...employees]];
+  for(const d of allDays){
+    const isFri=new Date(d).getDay()===5;
+    d2.push([d,dn(d),...employees.map(e=>isFri?'إجازة':pSets[e].has(d)?'✓ حضر':'✗ غائب')]);
+  }
+  XLSX.utils.book_append_sheet(WB,XLSX.utils.aoa_to_sheet(d2),'تقرير الغياب');
+
+  const d3=[['الموظف','أيام العمل','أيام الحضور','أيام الغياب','أيام التأخير','إجمالي دقائق التأخير']];
+  for(const emp of employees){
+    const r=empResults[emp];
+    d3.push([emp,workDays.length,r.presentDays,r.absentDays.length,r.lateDays,r.totalLate]);
+  }
+  XLSX.utils.book_append_sheet(WB,XLSX.utils.aoa_to_sheet(d3),'ملخص');
+
+  return new Blob([XLSX.write(WB,{bookType:'xlsx',type:'array'})],
+    {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+</script>
+</body>
+</html>
